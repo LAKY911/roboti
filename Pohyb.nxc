@@ -1,0 +1,66 @@
+#define NinetyDegTurn 500
+#define ULTRASONIC IN_4
+#define TRESHOLD_F 20
+#define DISTANCE_BACK 45
+
+void turnRight(int angle)
+{
+     OnRevSyncPID(OUT_BC, 50, 0, 30, 50, 90); // popojede dozadu
+     Wait(DISTANCE_BACK);
+     OnFwdSyncPID(OUT_BC, 65, -100, 30, 50, 90); // spin right
+     Wait((angle/90)*NinetyDegTurn);
+     Off(OUT_BC);
+
+}
+
+void turnLeft(int angle)
+{
+     OnRevSyncPID(OUT_BC, 50, 0, 30, 50, 90); // popojede dozadu
+     Wait(DISTANCE_BACK);
+     OnFwdSyncPID(OUT_BC, 65, 100, 30, 50, 90); // spin right
+     Wait((angle/90)*NinetyDegTurn);
+     Off(OUT_BC);
+
+}
+
+void driveForward()
+{
+    OnFwdSyncPID(OUT_BC, 75, 0, 30, 50, 90); // jed dopredu
+}
+
+task main()
+{
+     // Enable regulation
+     PosRegEnable(OUT_A);
+
+     // Set target angle
+     PosRegSetAngle(OUT_A, 180);
+
+     // Busy loop while the motor turns
+     while (GetOutput(OUT_A, ActualSpeedField) != 0) {}
+     
+     SetSensorUltrasonic(ULTRASONIC);
+     
+     while(1)
+     {
+             NumOut(0, 0, SensorUS(ULTRASONIC));
+             //the ultrasonic sensor needs time to read the values
+             //that is why we have the 20 millisecond wait
+             Wait(20);
+             if(SensorUS(ULTRASONIC) < TRESHOLD_F){
+                  Off(OUT_BC);
+                  turnRight(90);
+             }
+             else {
+                  driveForward();
+                  }
+    }
+
+}
+     
+
+
+
+
+
+
