@@ -1,66 +1,138 @@
-#define NinetyDegTurn 500
+#define NinetyDegTurn 700
+
 #define ULTRASONIC IN_4
-#define TRESHOLD_F 20
+
+#define TRESHOLD_F 10
+
 #define DISTANCE_BACK 45
+
+#define GYRO IN_1
+
+#define KGYROANGLE  7.5
+#define KGYROSPEED  1.15
+#define KPOS        0.07
+#define KSPEED      0.1
+
+
+byte sensorForward = 0;
+byte sensorRight = 0;
+byte sensorLeft = 0;
+
+
 
 void turnRight(int angle)
 {
-     OnRevSyncPID(OUT_BC, 50, 0, 30, 50, 90); // popojede dozadu
-     Wait(DISTANCE_BACK);
-     OnFwdSyncPID(OUT_BC, 65, -100, 30, 50, 90); // spin right
-     Wait((angle/90)*NinetyDegTurn);
-     Off(OUT_BC);
-
+  int turnRatio = 175*(angle/90);
+   byte rt = MotorRegulationTime();
+  SetMotorRegulationTime(MS_10);
+  byte ro = MotorRegulationOptions();
+  SetMotorRegulationOptions(OUT_REGOPTION_NO_SATURATION);
+  PosRegSetMax(OUT_B, 75, 15);
+  byte ms = MotorMaxSpeed(OUT_B);
+  byte ma = MotorMaxAcceleration(OUT_B);
+  PosRegEnable(OUT_B);
+  //PosRegSetAngle(OUT_B, 360*1.6);
+  RotateMotorEx(OUT_BC, 75, turnRatio, -50, true, true);
 }
+
+
+
+
+
 
 void turnLeft(int angle)
 {
-     OnRevSyncPID(OUT_BC, 50, 0, 30, 50, 90); // popojede dozadu
-     Wait(DISTANCE_BACK);
-     OnFwdSyncPID(OUT_BC, 65, 100, 30, 50, 90); // spin right
-     Wait((angle/90)*NinetyDegTurn);
-     Off(OUT_BC);
-
+ int turnRatio = 175*(angle/90);
+   byte rt = MotorRegulationTime();
+  SetMotorRegulationTime(MS_10);
+  byte ro = MotorRegulationOptions();
+  SetMotorRegulationOptions(OUT_REGOPTION_NO_SATURATION);
+  PosRegSetMax(OUT_B, 75, 15);
+  byte ms = MotorMaxSpeed(OUT_B);
+  byte ma = MotorMaxAcceleration(OUT_B);
+  PosRegEnable(OUT_B);
+  //PosRegSetAngle(OUT_B, 360*1.6);
+  RotateMotorEx(OUT_BC, 75, turnRatio, 50, true, true);
 }
+
+
 
 void driveForward()
 {
     OnFwdSyncPID(OUT_BC, 75, 0, 30, 50, 90); // jed dopredu
 }
 
-task main()
+void lookForward()
 {
-     // Enable regulation
-     PosRegEnable(OUT_A);
+     sensorForward = SensorUS(ULTRASONIC);
+}
 
-     // Set target angle
-     PosRegSetAngle(OUT_A, 180);
+void lookRight()
+{
+     RotateMotor(OUT_A, 70, 100);           //koukne doprava
+     Wait(100);
+     sensorRight = SensorUS(ULTRASONIC);
+}
 
-     // Busy loop while the motor turns
-     while (GetOutput(OUT_A, ActualSpeedField) != 0) {}
+void lookLeft()
+{
+     RotateMotor(OUT_A, 70, -200);         //koukne doleva
+     Wait(100);
+     sensorLeft = SensorUS(ULTRASONIC);
      
-     SetSensorUltrasonic(ULTRASONIC);
-     
+     RotateMotor(OUT_A, 70, 100);         //vrati se zpet
+}
+
+
+task numout()     // vypise ciselnou hodnotu
+{
      while(1)
      {
-             NumOut(0, 0, SensorUS(ULTRASONIC));
+      Wait(20);
+      NumOut(0, 0, SensorUS(ULTRASONIC));
+     }
+}
+
+
+
+task turn()       // otoci motor o 90 st.
+{
+    RotateMotor(OUT_A, 50, 90);
+}
+
+
+
+task main()      // hlavni vlakno, odsud se ridi vse
+
+{
+     SetSensorUltrasonic(ULTRASONIC);
+     // StartTask(numout);
+
+
+     while(1)
+     {
              //the ultrasonic sensor needs time to read the values
              //that is why we have the 20 millisecond wait
-             Wait(20);
+
+             Wait(4);
+
              if(SensorUS(ULTRASONIC) < TRESHOLD_F){
+
                   Off(OUT_BC);
+                  
+                  lookRight();
+                  lookLeft();
+                  
+
                   turnRight(90);
+
              }
+
              else {
+
                   driveForward();
+
                   }
     }
-
 }
-     
-
-
-
-
-
 
