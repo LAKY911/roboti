@@ -4,25 +4,24 @@
 
 #define TRESHOLD_F 10
 
-#define DISTANCE_BACK 45
 
-#define GYRO IN_1
+#define TRESHOLD_SIDE_MIN 12
+#define TRESHOLD_SIDE_MAX 20
 
-#define KGYROANGLE  7.5
-#define KGYROSPEED  1.15
-#define KPOS        0.07
-#define KSPEED      0.1
 
+int TURN_PCT_ADJUSTED = 0;
 
 byte sensorForward = 0;
 byte sensorRight = 0;
 byte sensorLeft = 0;
 
+int numberOfSteps = 0;
 
+int sensorPos = 0;  //nabyva hodnoty -1, 0, 1 (L,F,R)
 
 void turnRight(int angle)
 {
-  int turnRatio = 175*(angle/90);
+  int turnRatio = 200*(angle/90);
    byte rt = MotorRegulationTime();
   SetMotorRegulationTime(MS_10);
   byte ro = MotorRegulationOptions();
@@ -42,7 +41,7 @@ void turnRight(int angle)
 
 void turnLeft(int angle)
 {
- int turnRatio = 175*(angle/90);
+ int turnRatio = 200*(angle/90);
    byte rt = MotorRegulationTime();
   SetMotorRegulationTime(MS_10);
   byte ro = MotorRegulationOptions();
@@ -59,7 +58,7 @@ void turnLeft(int angle)
 
 void driveForward()
 {
-    OnFwdSyncPID(OUT_BC, 75, 0, 30, 50, 90); // jed dopredu
+    OnFwdSyncPID(OUT_BC, 75, TURN_PCT_ADJUSTED, 30, 50, 90); // jed dopredu
 }
 
 void lookForward()
@@ -74,21 +73,30 @@ void lookRight()
      sensorRight = SensorUS(ULTRASONIC);
 }
 
+int val = 0;
 void lookLeft()
 {
      RotateMotor(OUT_A, 70, -200);         //koukne doleva
      Wait(100);
      sensorLeft = SensorUS(ULTRASONIC);
-     
-     RotateMotor(OUT_A, 70, 100);         //vrati se zpet
+     val =  0;
+     //val = analyzeVal(sensorLeft);     // analyzuje vzdalenost, urci pocet volnych dlazdic dopredu
+     RotateMotor(OUT_A, 70, 100);          //vrati se zpet
 }
 
+int analyzeVal(byte inDist)
+{
+     inDist -= 11;                        // odecte jednu dlazdici
+     numberOfSteps = inDist % 28;         // vypocte pocet volnych dlazdic vepredu
+     return numberOfSteps;
+}
 
 task numout()     // vypise ciselnou hodnotu
 {
      while(1)
      {
       Wait(20);
+      ClearScreen();
       NumOut(0, 0, SensorUS(ULTRASONIC));
      }
 }
@@ -100,13 +108,39 @@ task turn()       // otoci motor o 90 st.
     RotateMotor(OUT_A, 50, 90);
 }
 
+task keepStraight()  // urdrzuje rovnost podle ultrazvuk sensoru,
+{
+     byte sensorVal = 0;
+     TURN_PCT_ADJUSTED = 0;
+     while(1)
+     {
+             Wait(20);
+             sensorVal = SensorUS(ULTRASONIC);
+             if (sensorVal<28)    // kdyz je tam zed
+             {
+                if (sensorVal > TRESHOLD_SIDE_MAX)
+                {
+                     // trochu se stoc k teto strane
+                     TURN_PCT_ADJUSTED -- ;
+                     NumOut(1, LCD_LINE1, TURN_PCT_ADJUSTED);
 
+                }
+                
+                else if (sensorVal < TRESHOLD_SIDE_MIN)
+                {
+                     // trochu se odklon
+                     TURN_PCT_ADJUSTED ++ ;
+                     NumOut(1, LCD_LINE1, TURN_PCT_ADJUSTED);
+                }
+             }
+     }
+}
 
 task main()      // hlavni vlakno, odsud se ridi vse
 
 {
      SetSensorUltrasonic(ULTRASONIC);
-     // StartTask(numout);
+     //StartTask(numout);
 
 
      while(1)
@@ -114,11 +148,12 @@ task main()      // hlavni vlakno, odsud se ridi vse
              //the ultrasonic sensor needs time to read the values
              //that is why we have the 20 millisecond wait
 
-             Wait(4);
+             Wait(20);
 
              if(SensorUS(ULTRASONIC) < TRESHOLD_F){
 
                   Off(OUT_BC);
+                  //StopTask(keepStraight);
                   
                   lookRight();
                   lookLeft();
@@ -131,6 +166,7 @@ task main()      // hlavni vlakno, odsud se ridi vse
              else {
 
                   driveForward();
+                  //StartTask(keepStraight);
 
                   }
     }
