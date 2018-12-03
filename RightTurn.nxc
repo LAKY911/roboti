@@ -1,0 +1,93 @@
+#define NinetyDegTurn 700
+
+#define ULTRASONIC IN_4
+
+#define TRESHOLD_F 10
+#define blockDis 15
+
+#define TRESHOLD_SIDE_MIN 12
+#define TRESHOLD_SIDE_MAX 20
+#define TURNRATIO 900
+
+
+int TURN_PCT_ADJUSTED = 0;
+
+byte sensorForward = 0;
+byte sensorRight = 0;
+byte sensorLeft = 0;
+
+int numberOfSteps = 0;
+
+
+task rightTurnL()
+{
+     RotateMotor(OUT_B, 80, TURNRATIO);
+}
+
+task rightTurnR()
+{
+     RotateMotor(OUT_C, -80, TURNRATIO);
+}
+
+task leftTurnL()
+{
+     RotateMotor(OUT_B, -80, TURNRATIO);
+}
+
+task leftTurnR()
+{
+     RotateMotor(OUT_C, 80, TURNRATIO);
+}
+
+void driveForward()
+{
+    OnFwdSyncPID(OUT_BC, -80, TURN_PCT_ADJUSTED, 30, 50, 90); // jed dopredu
+}
+
+task numout()     // vypise ciselnou hodnotu
+{
+     while(1)
+     {
+      Wait(20);
+      ClearScreen();
+      NumOut(0, 0, SensorUS(ULTRASONIC));
+     }
+}
+
+
+task main()      // hlavni vlakno, odsud se ridi vse
+
+{
+     SetSensorUltrasonic(ULTRASONIC);
+     //StartTask(numout);
+
+     int count = 0;
+
+     while(1)
+     {
+             //the ultrasonic sensor needs time to read the values
+             //that is why we have the 20 millisecond wait
+
+             Wait(20);
+
+             if(SensorUS(ULTRASONIC) < TRESHOLD_F){
+
+                  Off(OUT_BC);
+
+                    StartTask(leftTurnL);
+                    StartTask(leftTurnR);
+                    Wait(2100);
+
+
+             }
+
+             else {
+
+                  driveForward();
+
+                  }
+      }
+
+}
+
+
